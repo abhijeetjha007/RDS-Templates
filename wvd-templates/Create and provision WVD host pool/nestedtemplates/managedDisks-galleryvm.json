@@ -143,7 +143,7 @@
         },
         "storageAccountType": "[parameters('rdshVMDiskType')]",
         "availabilitySetId": {
-            "id": "[if(equals(parameters('enablePersistentDesktop'),bool('False')),resourceId('Microsoft.Compute/availabilitySets/', concat(parameters('rdshPrefix'), 'availabilitySet')),json('null'))]"
+            "id": "[if(equals(parameters('enablePersistentDesktop'),bool('False')),resourceId('Microsoft.Compute/availabilitySets/', concat(parameters('rdshPrefix'), '-avs-01')),json('null'))]"
         }
     },
     "resources": [
