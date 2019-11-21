@@ -77,7 +77,7 @@
             "type": "int",
             "allowedValues": [
                 2,3,5,7,9
-            ]
+            ],
             "metadata": {
                 "description": "Number of session hosts that will be created and added to the hostpool."
             }
@@ -291,7 +291,7 @@
             "apiVersion": "2018-10-01",
             "condition": "[equals(parameters('enablePersistentDesktop'),bool('False'))]",
             "type": "Microsoft.Compute/availabilitySets",
-            "name": "[concat(variables('rdshPrefix'), '-avs01')]",
+            "name": "[concat(variables('rdshPrefix'), '-avs-01')]",
             "location": "[parameters('location')]",
             "properties": {
                 "platformUpdateDomainCount": 5,
