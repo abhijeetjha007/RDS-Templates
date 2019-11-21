@@ -250,7 +250,8 @@ function Check-ForAllowNewConnections
 function Check-IfSessionHostInMaintenance
 {
 	param(
-		[string]$VMName
+		[string]$VMName,
+		[string]$MaintenanceTagName
 	)
 	# Check the session host is in maintenance
 	$VmInfo = Get-azVM | Where-Object { $_.Name -eq $VMName }
@@ -325,7 +326,8 @@ function PeakHours-StartSessionHosts-DF
 		[string]$HostpoolName,
 		[int]$SessionhostLimit,
 		[int]$HostpoolMaxSessionLimit,
-		[int]$MinimumNumberOfRDSH
+		[int]$MinimumNumberOfRDSH,
+		[string]$MaintenanceTagName
 	)
 
 	# Check the number of running session hosts
@@ -337,7 +339,7 @@ function PeakHours-StartSessionHosts-DF
 		Add-LogEntry -LogMessageObj $LogMessage -LogAnalyticsWorkspaceId $LogAnalyticsWorkspaceId -LogAnalyticsPrimaryKey $LogAnalyticsPrimaryKey -logType "WVDTenantScale_CL" -TimeDifferenceInHours $TimeDifference
 		$SessionCapacityofSessionHost = $SessionHost.Sessions
 		# Check the Session host is in maintenance
-		Check-IfSessionHostInMaintenance -VMName $VMName
+		Check-IfSessionHostInMaintenance -VMName $VMName -MaintenanceTagName $MaintenanceTagName
 		if ($SessionHostLimit -lt $SessionCapacityofSessionHost -or $SessionHost.Status -eq "Available") {
 			$NumberOfRunningHost = $NumberOfRunningHost + 1
 		}
@@ -360,7 +362,7 @@ function PeakHours-StartSessionHosts-DF
 						$SessionHostName = $SessionHost.SessionHostName | Out-String
 						$VMName = $SessionHostName.Split(".")[0]
 						# Check if the session host is in maintenance
-						Check-IfSessionHostInMaintenance -VMName $VMName
+						Check-IfSessionHostInMaintenance -VMName $VMName -MaintenanceTagName $MaintenanceTagName
 						# Check if the session host is Allowing NewConnections
 						Check-ForAllowNewConnections -TenantName $TenantName -HostPoolName $HostPoolName -SessionHostName $SessionHost.SessionHostName
 						# Start the Az VM
@@ -391,7 +393,7 @@ function PeakHours-StartSessionHosts-DF
 					$VMName = $SessionHostName.Split(".")[0]
 
 					# Check the session host is in maintenance
-					Check-IfSessionHostInMaintenance -VMName $VMName
+					Check-IfSessionHostInMaintenance -VMName $VMName -MaintenanceTagName $MaintenanceTagName
 
 					# Validating session host is allowing new connections
 					Check-ForAllowNewConnections -TenantName $TenantName -HostPoolName $HostPoolName -SessionHostName $SessionHost.SessionHostName
@@ -421,9 +423,7 @@ function PeakHours-StartSessionHosts-BF
 		[string]$HostpoolName,
 		[int]$MinimumNumberOfRDSH,
 		[int]$SessionThresholdPerCPU,
-		[int]$TotalRunningCores,
-		[int]$NumberOfRunningHost,
-		[int]$AvailableSessionCapacity
+		[string]$MaintenanceTagName
 	)
 	# Check the number of running session hosts
 	$NumberOfRunningHost = 0
@@ -440,7 +440,7 @@ function PeakHours-StartSessionHosts-BF
 		$VMName = $SessionHostName.Split(".")[0]
 
 		# Check the Session host is in maintenance
-		Check-IfSessionHostInMaintenance -VMName $VMName
+		Check-IfSessionHostInMaintenance -VMName $VMName -MaintenanceTagName $MaintenanceTagName
 
 		$RoleInstance = Get-azVM -Status | Where-Object { $_.Name.Contains($VMName) }
 		if ($SessionHostName.ToLower().Contains($RoleInstance.Name.ToLower())) {
@@ -473,7 +473,7 @@ function PeakHours-StartSessionHosts-BF
 				$VMName = $SessionHost.Split(".")[0]
 
 				# Check if the Session host is in maintenance
-				Check-IfSessionHostInMaintenance -VMName $VMName
+				Check-IfSessionHostInMaintenance -VMName $VMName -MaintenanceTagName $MaintenanceTagName
 
 				$RoleInstance = Get-azVM -Status | Where-Object { $_.Name.Contains($VMName) }
 
@@ -519,7 +519,7 @@ function PeakHours-StartSessionHosts-BF
 				if ($HostPoolUserSessions.Count -ge $AvailableSessionCapacity) {
 					$VMName = $SessionHost.Split(".")[0]
 					# Check the Session host is in maintenance
-					Check-IfSessionHostInMaintenance -VMName $VMName
+					Check-IfSessionHostInMaintenance -VMName $VMName -MaintenanceTagName $MaintenanceTagName
 
 					$RoleInstance = Get-azVM -Status | Where-Object { $_.Name.Contains($VMName) }
 
@@ -657,7 +657,8 @@ function OffPeakSessionHost-Shutdown
 		[string]$HostpoolName,
 		[int]$LimitSecondsToForceLogOffUser,
 		[string]$LogOffMessageTitle,
-		[string]$LogOffMessageBody
+		[string]$LogOffMessageBody,
+		[string]$MaintenanceTagName
 	)
 
 	# Collect the all session hosts of hostpool
@@ -674,7 +675,7 @@ function OffPeakSessionHost-Shutdown
 						if ($SessionHost.Sessions -eq 0)
 						{
 							# Check the Session host is in maintenance, which session host have 0 sessions
-							Check-IfSessionHostInMaintenance -VMName $VMName
+							Check-IfSessionHostInMaintenance -VMName $VMName -MaintenanceTagName $MaintenanceTagName
 							# Shutdown the Azure VM, which session host have 0 sessions
 							Stop-SessionHost -VMName $VMName | Out-Null
 						}
@@ -683,7 +684,7 @@ function OffPeakSessionHost-Shutdown
 							# Sign of the user sessions which are active in each sesssion host
 							$UserSessionsOfHost = SignOfUserSessions -TenantName $TenantName -HostPoolName $HostPoolName -SessionHost $SessionHostName -LimitSecondsToForceLogOffUser $LimitSecondsToForceLogOffUser -LogOffMessageTitle $LogOffMessageTitle -LogOffMessageBody $LogOffMessageBody
 							# Check the Session host is in maintenance
-							Check-IfSessionHostInMaintenance -VMName $VMName
+							Check-IfSessionHostInMaintenance -VMName $VMName -MaintenanceTagName $MaintenanceTagName
 							# Check the session count before shutting down the VM
 							if ($UserSessionsOfHost -eq 0) {
 								# Shutdown the Azure VM
@@ -707,7 +708,7 @@ function OffPeakSessionHost-Shutdown
     }
 	else
 	{
-		# Breadth frist session hosts shutdown in off peak hours
+		# Breadth first session hosts shutdown in off peak hours
 		if ($NumberOfRunningHost -gt $MinimumNumberOfRDSH) {
 			foreach ($SessionHost in $UserSessionsOfHosts) {
 				#Check the status of the session host
@@ -717,7 +718,7 @@ function OffPeakSessionHost-Shutdown
 						$VMName = $SessionHostName.Split(".")[0]
 						if ($SessionHost.Sessions -eq 0) {
 							# Check the Session host is in maintenance, which session have 0 sessions
-							Check-IfSessionHostInMaintenance -VMName $VMName
+							Check-IfSessionHostInMaintenance -VMName $VMName -MaintenanceTagName $MaintenanceTagName
 							# Shutdown the Azure VM, which session host have 0 sessions
 							Stop-SessionHost -VMName $VMName | Out-Null
 						}
@@ -727,7 +728,7 @@ function OffPeakSessionHost-Shutdown
 							# Check the session count before shutting down the VM
 							if ($UserSessionsOfHost -eq 0) {
 								# Check the Session host is in maintenance
-								Check-IfSessionHostInMaintenance -VMName $VMName
+								Check-IfSessionHostInMaintenance -VMName $VMName -MaintenanceTagName $MaintenanceTagName
 								# Shutdown the Azure VM
 								Stop-SessionHost -VMName $VMName | Out-Null
 							}
@@ -775,11 +776,12 @@ function OffPeakUserSessionUsage-SpinUpSessionHost
 		[string]$DefinedMinimumNumberOfRDSH,
 		[string]$TenantName,
 		[string]$HostpoolName,
-		[string]$Type
+		[string]$Type,
+		[string]$MaintenanceTagName
 	)
 	$AllSessionHosts = Get-RdsSessionHost -TenantName $TenantName -HostPoolName $HostpoolName
 	$AutomationAccount = Get-azAutomationAccount -ErrorAction SilentlyContinue | Where-Object { $_.AutomationAccountName -eq $AutomationAccountName }
-	$OffPeakUsageMinimumNoOfRDSH = Get-azAutomationVariable -Name "OffPeakUsage-MinimumNoOfRDSH" -ResourceGroupName $AutomationAccount.ResourceGroupName -AutomationAccountName $AutomationAccount.AutomationAccountName -ErrorAction SilentlyContinue
+	$OffPeakUsageMinimumNoOfRDSH = Get-azAutomationVariable -Name "OffPeakUsage-MinimumNoOfRDSH-$HostpoolName" -ResourceGroupName $AutomationAccount.ResourceGroupName -AutomationAccountName $AutomationAccount.AutomationAccountName -ErrorAction SilentlyContinue
 	if ($OffPeakUsageMinimumNoOfRDSH) {
 		[int]$MinimumNumberOfRDSH = $OffPeakUsageMinimumNoOfRDSH.Value
 		$NoConnectionsofhost = 0
@@ -791,7 +793,7 @@ function OffPeakUserSessionUsage-SpinUpSessionHost
 			}
 			if ($NoConnectionsofhost -gt $DefinedMinimumNumberOfRDSH) {
 				[int]$MinimumNumberOfRDSH = [int]$MinimumNumberOfRDSH - $NoConnectionsofhost
-				Set-azAutomationVariable -Name "OffPeakUsage-MinimumNoOfRDSH" -ResourceGroupName $AutomationAccount.ResourceGroupName -AutomationAccountName $AutomationAccount.AutomationAccountName -Encrypted $false -Value $MinimumNumberOfRDSH
+				Set-azAutomationVariable -Name "OffPeakUsage-MinimumNoOfRDSH-$HostpoolName" -ResourceGroupName $AutomationAccount.ResourceGroupName -AutomationAccountName $AutomationAccount.AutomationAccountName -Encrypted $false -Value $MinimumNumberOfRDSH
 			}
 		}
 	}
@@ -823,7 +825,7 @@ function OffPeakUserSessionUsage-SpinUpSessionHost
 					$SessionHostName = $SessionHost.SessionHostName | Out-String
 					$VMName = $SessionHostName.Split(".")[0]
 					# Check the Session host is in maintenance
-					Check-IfSessionHostInMaintenance -VMName $VMName
+					Check-IfSessionHostInMaintenance -VMName $VMName -MaintenanceTagName $MaintenanceTagName
 					# Validating session host is allowing new connections
 					Check-ForAllowNewConnections -TenantName $TenantName -HostPoolName $HostpoolName -SessionHostName $SessionHost.SessionHostName
 					# Start the Az VM
@@ -834,12 +836,12 @@ function OffPeakUserSessionUsage-SpinUpSessionHost
 					$NumberOfRunningHost = $NumberOfRunningHost + 1
 					# Increment the number of minimumnumberofrdsh
 					[int]$MinimumNumberOfRDSH = [int]$MinimumNumberOfRDSH + 1
-					$OffPeakUsageMinimumNoOfRDSH = Get-azAutomationVariable -Name "OffPeakUsage-MinimumNoOfRDSH" -ResourceGroupName $AutomationAccount.ResourceGroupName -AutomationAccountName $AutomationAccount.AutomationAccountName -ErrorAction SilentlyContinue
+					$OffPeakUsageMinimumNoOfRDSH = Get-azAutomationVariable -Name "OffPeakUsage-MinimumNoOfRDSH-$HostpoolName" -ResourceGroupName $AutomationAccount.ResourceGroupName -AutomationAccountName $AutomationAccount.AutomationAccountName -ErrorAction SilentlyContinue
 					if ($OffPeakUsageMinimumNoOfRDSH -eq $null) {
-						New-azAutomationVariable -Name "OffPeakUsage-MinimumNoOfRDSH" -ResourceGroupName $AutomationAccount.ResourceGroupName -AutomationAccountName $AutomationAccount.AutomationAccountName -Encrypted $false -Value $MinimumNumberOfRDSH -Description "Dynamically generated minimumnumber of RDSH value"
+						New-azAutomationVariable -Name "OffPeakUsage-MinimumNoOfRDSH-$HostpoolName" -ResourceGroupName $AutomationAccount.ResourceGroupName -AutomationAccountName $AutomationAccount.AutomationAccountName -Encrypted $false -Value $MinimumNumberOfRDSH -Description "Dynamically generated minimumnumber of RDSH value"
 					}
 					else {
-						Set-azAutomationVariable -Name "OffPeakUsage-MinimumNoOfRDSH" -ResourceGroupName $AutomationAccount.ResourceGroupName -AutomationAccountName $AutomationAccount.AutomationAccountName -Encrypted $false -Value $MinimumNumberOfRDSH
+						Set-azAutomationVariable -Name "OffPeakUsage-MinimumNoOfRDSH-$HostpoolName" -ResourceGroupName $AutomationAccount.ResourceGroupName -AutomationAccountName $AutomationAccount.AutomationAccountName -Encrypted $false -Value $MinimumNumberOfRDSH
 					}
 					if ($type -eq "DepthFirst") {
                         $result = $NumberOfRunningHost
@@ -943,12 +945,12 @@ if ($HostpoolInfo.LoadBalancerType -eq "DepthFirst")
 
 		# Peak hours check and remove the MinimumnoofRDSH value dynamically stored in automation variable 												   
 		$AutomationAccount = Get-azAutomationAccount -ErrorAction SilentlyContinue | Where-Object { $_.AutomationAccountName -eq $AutomationAccountName }
-		$OffPeakUsageMinimumNoOfRDSH = Get-azAutomationVariable -Name "OffPeakUsage-MinimumNoOfRDSH" -ResourceGroupName $AutomationAccount.ResourceGroupName -AutomationAccountName $AutomationAccount.AutomationAccountName -ErrorAction SilentlyContinue
+		$OffPeakUsageMinimumNoOfRDSH = Get-azAutomationVariable -Name "OffPeakUsage-MinimumNoOfRDSH-$HostpoolName" -ResourceGroupName $AutomationAccount.ResourceGroupName -AutomationAccountName $AutomationAccount.AutomationAccountName -ErrorAction SilentlyContinue
 		if ($OffPeakUsageMinimumNoOfRDSH) {
-			Remove-azAutomationVariable -Name "OffPeakUsage-MinimumNoOfRDSH" -ResourceGroupName $AutomationAccount.ResourceGroupName -AutomationAccountName $AutomationAccount.AutomationAccountName
+			Remove-azAutomationVariable -Name "OffPeakUsage-MinimumNoOfRDSH-$HostpoolName" -ResourceGroupName $AutomationAccount.ResourceGroupName -AutomationAccountName $AutomationAccount.AutomationAccountName
 		}
 		###############Peak hours start the Session Hosts#########
-		PeakHours-StartSessionHosts-DF -TenantName $TenantName -HostPoolName $HostpoolName -SessionhostLimit $SessionhostLimit -HostpoolMaxSessionLimit $HostpoolMaxSessionLimit -MinimumNoOfRDSH $MinimumNumberOfRDSH
+		PeakHours-StartSessionHosts-DF -TenantName $TenantName -HostPoolName $HostpoolName -SessionhostLimit $SessionhostLimit -HostpoolMaxSessionLimit $HostpoolMaxSessionLimit -MinimumNoOfRDSH $MinimumNumberOfRDSH -MaintenanceTagName $MaintenanceTagName
 	}
 	else {
 		Write-Output "It is Off-peak hours"
@@ -972,16 +974,16 @@ if ($HostpoolInfo.LoadBalancerType -eq "DepthFirst")
 
 		# Check and Collecting dynamically stored MinimumNoOfRDSH Value																 
 		$AutomationAccount = Get-azAutomationAccount -ErrorAction SilentlyContinue | Where-Object { $_.AutomationAccountName -eq $AutomationAccountName }
-		$OffPeakUsageMinimumNoOfRDSH = Get-azAutomationVariable -Name "OffPeakUsage-MinimumNoOfRDSH" -ResourceGroupName $AutomationAccount.ResourceGroupName -AutomationAccountName $AutomationAccount.AutomationAccountName -ErrorAction SilentlyContinue
+		$OffPeakUsageMinimumNoOfRDSH = Get-azAutomationVariable -Name "OffPeakUsage-MinimumNoOfRDSH-$HostpoolName" -ResourceGroupName $AutomationAccount.ResourceGroupName -AutomationAccountName $AutomationAccount.AutomationAccountName -ErrorAction SilentlyContinue
 		if ($OffPeakUsageMinimumNoOfRDSH) {
 			[int]$MinimumNumberOfRDSH = $OffPeakUsageMinimumNoOfRDSH.Value
 		}
 
 		########Shut down the session hosts in Off peak hours###############
-		$OffpeakhoursShs = OffPeakSessionHost-Shutdown -Type "DepthFirst" -TenantName $TenantName -HostPoolName $HostpoolName -LimitSecondsToForceLogOffUser $LimitSecondsToForceLogOffUser -LogOffMessageTitle $LogOffMessageTitle -LogOffMessageBody $LogOffMessageBody -NumberOfRunningHost $NumberOfRunningHost -MinimumNumberOfRDSH $MinimumNumberOfRDSH
+		$OffpeakhoursShs = OffPeakSessionHost-Shutdown -Type "DepthFirst" -TenantName $TenantName -HostPoolName $HostpoolName -LimitSecondsToForceLogOffUser $LimitSecondsToForceLogOffUser -LogOffMessageTitle $LogOffMessageTitle -LogOffMessageBody $LogOffMessageBody -NumberOfRunningHost $NumberOfRunningHost -MinimumNumberOfRDSH $MinimumNumberOfRDSH -MaintenanceTagName $MaintenanceTagName
     
 		# Check the Off peak User Sessions Usage and Spin up the Session host
-		$UsageresultShs = OffPeakUserSessionUsage-SpinUpSessionHost -NumberOfRunningHost $OffpeakhoursShs -MinimumNumberOfRDSH $MinimumNumberOfRDSH -DefinedMinimumNumberOfRDSH $DefinedMinimumNumberOfRDSH -TenantName $TenantName -HostPoolName $HostpoolName -Type "DepthFirst"
+		$UsageresultShs = OffPeakUserSessionUsage-SpinUpSessionHost -NumberOfRunningHost $OffpeakhoursShs -MinimumNumberOfRDSH $MinimumNumberOfRDSH -DefinedMinimumNumberOfRDSH $DefinedMinimumNumberOfRDSH -TenantName $TenantName -HostPoolName $HostpoolName -Type "DepthFirst" -MaintenanceTagName $MaintenanceTagName
         Write-Output "HostpoolName:$HostpoolName, NumberofRunninghosts:$UsageresultShs"
 	    $LogMessage = @{ hostpoolName_s = $HostpoolName; logmessage_s = "HostpoolName:$HostpoolName, NumberofRunninghosts:$UsageresultShs" }
 	    Add-LogEntry -LogMessageObj $LogMessage -LogAnalyticsWorkspaceId $LogAnalyticsWorkspaceId -LogAnalyticsPrimaryKey $LogAnalyticsPrimaryKey -logType "WVDTenantScale_CL" -TimeDifferenceInHours $TimeDifference
@@ -1008,12 +1010,12 @@ else {
 
 		# Peak hours check and remove the MinimumnoofRDSH value dynamically stored in automation variable 												   
 		$AutomationAccount = Get-azAutomationAccount -ErrorAction SilentlyContinue | Where-Object { $_.AutomationAccountName -eq $AutomationAccountName }
-		$OffPeakUsageMinimumNoOfRDSH = Get-azAutomationVariable -Name "OffPeakUsage-MinimumNoOfRDSH" -ResourceGroupName $AutomationAccount.ResourceGroupName -AutomationAccountName $AutomationAccount.AutomationAccountName -ErrorAction SilentlyContinue
+		$OffPeakUsageMinimumNoOfRDSH = Get-azAutomationVariable -Name "OffPeakUsage-MinimumNoOfRDSH-$HostpoolName" -ResourceGroupName $AutomationAccount.ResourceGroupName -AutomationAccountName $AutomationAccount.AutomationAccountName -ErrorAction SilentlyContinue
 		if ($OffPeakUsageMinimumNoOfRDSH) {
-			Remove-azAutomationVariable -Name "OffPeakUsage-MinimumNoOfRDSH" -ResourceGroupName $AutomationAccount.ResourceGroupName -AutomationAccountName $AutomationAccount.AutomationAccountName
+			Remove-azAutomationVariable -Name "OffPeakUsage-MinimumNoOfRDSH-$HostpoolName" -ResourceGroupName $AutomationAccount.ResourceGroupName -AutomationAccountName $AutomationAccount.AutomationAccountName
 		}
 		##############Peak Hours starting session hosts######
-		PeakHours-StartSessionHosts-BF -TenantName $TenantName -HostPoolName $HostpoolName -MinimumNoOfRDSH $MinimumNumberOfRDSH -SessionThresholdPerCPU $SessionThresholdPerCPU
+		PeakHours-StartSessionHosts-BF -TenantName $TenantName -HostPoolName $HostpoolName -MinimumNoOfRDSH $MinimumNumberOfRDSH -SessionThresholdPerCPU $SessionThresholdPerCPU -MaintenanceTagName $MaintenanceTagName
 	}
 	else
 	{
@@ -1051,15 +1053,15 @@ else {
 		[int]$DefinedMinimumNumberOfRDSH = $MinimumNumberOfRDSH
 		## Check and Collecting dynamically stored MinimumNoOfRDSH Value																 
 		$AutomationAccount = Get-azAutomationAccount -ErrorAction SilentlyContinue | Where-Object { $_.AutomationAccountName -eq $AutomationAccountName }
-		$OffPeakUsageMinimumNoOfRDSH = Get-azAutomationVariable -Name "OffPeakUsage-MinimumNoOfRDSH" -ResourceGroupName $AutomationAccount.ResourceGroupName -AutomationAccountName $AutomationAccount.AutomationAccountName -ErrorAction SilentlyContinue
+		$OffPeakUsageMinimumNoOfRDSH = Get-azAutomationVariable -Name "OffPeakUsage-MinimumNoOfRDSH-$HostpoolName" -ResourceGroupName $AutomationAccount.ResourceGroupName -AutomationAccountName $AutomationAccount.AutomationAccountName -ErrorAction SilentlyContinue
 		if ($OffPeakUsageMinimumNoOfRDSH) {
 			[int]$MinimumNumberOfRDSH = $OffPeakUsageMinimumNoOfRDSH.Value
 		}
 		##############Shut down the session hosts in Off peak hours#############
-		$OffpeakhoursShs = OffPeakSessionHost-Shutdown -Type "BreadthFirst" -TenantName $TenantName -HostPoolName $HostpoolName -MinimumNumberOfRDSH $MinimumNumberOfRDSH -NumberOfRunningHost $NumberOfRunningHost -LimitSecondsToForceLogOffUser $LimitSecondsToForceLogOffUser -LogOffMessageTitle $LogOffMessageTitle -LogOffMessageBody $LogOffMessageBody -TotalRunningCores $TotalRunningCores
+		$OffpeakhoursShs = OffPeakSessionHost-Shutdown -Type "BreadthFirst" -TenantName $TenantName -HostPoolName $HostpoolName -MinimumNumberOfRDSH $MinimumNumberOfRDSH -NumberOfRunningHost $NumberOfRunningHost -LimitSecondsToForceLogOffUser $LimitSecondsToForceLogOffUser -LogOffMessageTitle $LogOffMessageTitle -LogOffMessageBody $LogOffMessageBody -TotalRunningCores $TotalRunningCores -MaintenanceTagName $MaintenanceTagName
 		
         # Check the User Sessions Usage in off peak hours and Spin up the Session host
-		$UsageresultShs = OffPeakUserSessionUsage-SpinUpSessionHost -NumberOfRunningHost $OffpeakhoursShs.NumberOfRunningHost -MinimumNumberOfRDSH $MinimumNumberOfRDSH -DefinedMinimumNumberOfRDSH $DefinedMinimumNumberOfRDSH -TenantName $TenantName -HostPoolName $HostpoolName -Type "BreadthFirst" -TotalRunningCores $OffpeakhoursShs.TotalRunningCores
+		$UsageresultShs = OffPeakUserSessionUsage-SpinUpSessionHost -NumberOfRunningHost $OffpeakhoursShs.NumberOfRunningHost -MinimumNumberOfRDSH $MinimumNumberOfRDSH -DefinedMinimumNumberOfRDSH $DefinedMinimumNumberOfRDSH -TenantName $TenantName -HostPoolName $HostpoolName -Type "BreadthFirst" -TotalRunningCores $OffpeakhoursShs.TotalRunningCores -MaintenanceTagName $MaintenanceTagName
         
         Write-Output "HostpoolName:$HostpoolName, TotalRunningCores:$($UsageresultShs.TotalRunningCores) NumberOfRunningHost:$($UsageresultShs.NumberOfRunningHost)"
 	    $LogMessage = @{ hostpoolName_s = $HostpoolName; logmessage_s = "HostpoolName:$HostpoolName, TotalRunningCores:$($UsageresultShs.TotalRunningCores) NumberOfRunningHost:$($UsageresultShs.NumberOfRunningHost)" }
