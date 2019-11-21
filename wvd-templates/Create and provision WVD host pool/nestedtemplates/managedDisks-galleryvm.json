@@ -187,7 +187,7 @@
                 "hardwareProfile": {
                     "vmSize": "[parameters('rdshVmSize')]"
                 },
-                "availabilitySet": "[if(equals(parameters('enablePersistentDesktop'),bool('False')),variables('-avs01'),json('null'))]",
+                "availabilitySet": "[if(equals(parameters('enablePersistentDesktop'),bool('False')),variables('-avs-01'),json('null'))]",
                 "osProfile": {
                     "computerName": "[concat(parameters('rdshPrefix'), copyindex())]",
                     "adminUsername": "[parameters('existingDomainUsername')]",
