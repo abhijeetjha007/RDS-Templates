@@ -306,7 +306,7 @@
             "name": "[variables('vmCreation-linkedTemplate_name')]",
             "type": "Microsoft.Resources/deployments",
             "dependsOn": [
-                "[concat('Microsoft.Compute/availabilitySets/', variables('rdshPrefix'), '-avs01')]"
+                "[concat('Microsoft.Compute/availabilitySets/', variables('rdshPrefix'), '-avs-01')]"
             ],
             "properties": {
                 "mode": "Incremental",
