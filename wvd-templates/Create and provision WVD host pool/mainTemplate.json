@@ -197,6 +197,10 @@
         },
         "hostPoolName": {
             "type": "string",
+            "allowedValues": [
+                "BHP-Standard",
+                "BHP-Enhanced"
+            ],
             "metadata": {
                 "description": "The name of the hostpool to be created in the RDS Tenant."
             }
